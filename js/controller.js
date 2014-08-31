@@ -18,11 +18,12 @@ myApp.filter('unique', function() {
 
 myApp.controller('Tbody', function($scope){
 	$scope.comments = [];
+	$scope.at = "";
 	$scope.update = function(){
 		$scope.comments.splice(0,0);
 	}
 
-	$scope.sendURL = function(){
+	$scope.getComments = function(){
 		$scope.comments = new Array();
 
 		var post_id = $scope.fbid_check();
@@ -49,7 +50,7 @@ myApp.controller('Tbody', function($scope){
 			}
 
 			if (res.paging.next){
-				$scope.getNext(res.paging.next);
+				$scope.getCommentsNext(res.paging.next);
 			}else{
 				clearInterval(timer);
 				alert("完成，共花費"+sec+"秒");
@@ -59,7 +60,8 @@ myApp.controller('Tbody', function($scope){
 		});
 	}
 
-	$scope.getNext = function(url){
+
+	$scope.getCommentsNext = function(url){
 			$.get(url,function(res){
 			for (var i=0; i<res.data.length; i++){
 				$scope.data.push(res.data[i]);
@@ -79,7 +81,7 @@ myApp.controller('Tbody', function($scope){
 			$scope.$apply();
 	
 			if (res.paging.next){
-				$scope.getNext(res.paging.next);
+				$scope.getCommentsNext(res.paging.next);
 			}else{
 				clearInterval(timer);
 				alert("完成，共花費"+sec+"秒");
@@ -88,24 +90,113 @@ myApp.controller('Tbody', function($scope){
 	}
 
 
-	$scope.sendURL2 = function(){
+	$scope.getLikes = function(){
+		$scope.comments = new Array();
+
 		var post_id = $scope.fbid_check();
 
-		// var comment = fb.getLike(post_id);
-		// comment.done(function(res){
-		// 	//console.log(res);
-		// 	data = res[0];
-		// 	for (var i=0; i<res[0].length; i++){
-		// 		data[i].fromid = data[i].user_id;
-		// 		data[i].realname = res[1][i].name;
-		// 		data[i].serial = i+1;
-		// 		data[i].link = "http://www.facebook.com/"+data[i].user_id;
-		// 	}
-		// 	$scope.comments = new Array();
-		// 	$scope.$apply(function(){
-		// 		$scope.comments = data;
-		// 	});
-		// });
+		timer = setInterval(function(){
+			sec++;
+		},1000);
+
+		$scope.data = new Array();
+		$.get("https://graph.facebook.com/"+post_id+"/likes",function(res){
+			  //console.log(res);
+			for (var i=0; i<res.data.length; i++){
+				$scope.data.push(res.data[i]);
+			}
+
+			data = $scope.data;
+			for (var i=0; i<$scope.data.length; i++){
+				data[i].realname = $scope.data[i].name;
+				data[i].serial = i+1;
+				data[i].fromid = $scope.data[i].id;
+				data[i].link = "http://www.facebook.com/"+$scope.data[i].id;
+			}
+
+			if (res.paging.next){
+				$scope.getLikesNext(res.paging.next);
+			}else{
+				clearInterval(timer);
+				alert("完成，共花費"+sec+"秒");
+				$scope.comments = data;
+				$scope.$apply();
+			}
+		});
+	}
+
+	$scope.getLikesNext = function(url){
+			$.get(url,function(res){
+			for (var i=0; i<res.data.length; i++){
+				$scope.data.push(res.data[i]);
+			}
+
+			data = $scope.data;
+			for (var i=0; i<$scope.data.length; i++){
+				data[i].realname = $scope.data[i].name;
+				data[i].serial = i+1;
+				data[i].fromid = $scope.data[i].id;
+				data[i].link = "http://www.facebook.com/"+$scope.data[i].id;
+			}
+
+			$scope.comments = data;
+			$scope.$apply();
+	
+			if (res.paging.next){
+				$scope.getLikesNext(res.paging.next);
+			}else{
+				clearInterval(timer);
+				alert("完成，共花費"+sec+"秒");
+			}
+		});	
+	}
+
+	$scope.getAuth = function(){
+		FB.login(function(response) {
+			$scope.callback(response);
+		}, {scope: 'read_stream'});
+	}
+
+	$scope.callback = function(response){
+		if (response.status === 'connected') {
+      		$scope.at = response.authResponse.accessToken;
+      		$scope.getShares();
+		}
+	}
+
+	$scope.getShares = function(){
+		$scope.comments = new Array();
+
+		var post_id = $scope.fbid_check();
+
+		timer = setInterval(function(){
+			sec++;
+		},1000);
+
+		$scope.data = new Array();
+		$.get("https://graph.facebook.com/"+post_id+"/sharedposts?access_token="+$scope.at,function(res){
+			  console.log(res);
+			for (var i=0; i<res.data.length; i++){
+				$scope.data.push(res.data[i]);
+			}
+
+			data = $scope.data;
+			for (var i=0; i<$scope.data.length; i++){
+				data[i].realname = $scope.data[i].name;
+				data[i].serial = i+1;
+				data[i].fromid = $scope.data[i].id;
+				data[i].link = "http://www.facebook.com/"+$scope.data[i].id;
+			}
+
+			if (res.paging.next){
+				$scope.getLikesNext(res.paging.next);
+			}else{
+				clearInterval(timer);
+				alert("完成，共花費"+sec+"秒");
+				$scope.comments = data;
+				$scope.$apply();
+			}
+		});
 	}
 
 	$scope.fbid_check = function(){
@@ -113,13 +204,14 @@ myApp.controller('Tbody', function($scope){
 		// type1 分享照片  https://www.facebook.com/appledaily.tw/photos/a.364361237068.207658.232633627068/10152652767797069/?type=1
 		// type2 分享文字、連結  https://www.facebook.com/stormmedia/posts/318807414967642 
 		// type3 直接輸入FBID 10152652767797069
+		// type4 是甚麼我也不知道 https://www.facebook.com/permalink.php?story_fbid=344077265740581&id=341275322687442
 		var start,end;
 		var fbid;
 
 		var checkType12 = posturl.indexOf('posts');
 		if (checkType12 > 0){
 			// type2
-			start = checkType+6;
+			start = checkType12+6;
 			end = posturl.length;
 			fbid = posturl.substring(start,end);
 		}else{
@@ -130,10 +222,18 @@ myApp.controller('Tbody', function($scope){
 				start = posturl.lastIndexOf('/',end-1)+1;
 				fbid = posturl.substring(start,end);
 			}else{
-				// type3
-				fbid = posturl;
+				var checkType34 = posturl.indexOf('story_fbid');
+				if (checkType34 > 0){
+					start = checkType34+11;
+					end = posturl.lastIndexOf('&id');
+					fbid = posturl.substring(start,end);
+				}else{
+					// type3
+					fbid = posturl;
+				}
 			}
 		}
 		return fbid;
 	}
 });
+
